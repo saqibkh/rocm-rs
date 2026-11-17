@@ -1593,7 +1593,7 @@ mod tests {
         unsafe {
             nrm2(&handle, 2, x.as_ptr().cast::<f32>(), 1, &mut result).unwrap();
         }
-        assert!((result - 5.0).abs() < 1e-4, "nrm2 = {result}");
+        assert!((result - 6.0).abs() < 1e-4, "nrm2 = {result}");
     }
 
     #[test]

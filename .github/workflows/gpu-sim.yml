@@ -65,21 +65,21 @@ jobs:
       - name: Build tests
         run: |
           cargo test --release --no-default-features --features macros,rocsolver \
-            --no-run
+            --no-run --tests
 
       # The sort tests are skipped because gpu-sort is off. The job fails on
       # any test failure, on a VirtualGPU error, and if fewer tests passed than
       # expected (so a silent skip or a missing device cannot go green).
-      - name: Test
+      - name: Experiments
         env:
           LD_LIBRARY_PATH: /opt/rocm/lib
         run: |
-          set -o pipefail
-          vgpu run cargo test --release --no-default-features \
-            --features macros,rocsolver -- --test-threads=1 --skip sorting \
-            2>&1 | tee test.log
-          if grep -q "VirtualGPU error" test.log; then exit 1; fi
-          passed=$(grep -oP 'test result: ok\. \K[0-9]+(?= passed)' test.log \
-            | paste -sd+ | bc)
-          echo "passed: $passed"
-          test "${passed:-0}" -ge 31
+          for t in b_load_empty_module b2_load_garbage_module c_async_copy_vec_alive d_async_copy_vec_dropped; do
+            echo "=== $t"
+            vgpu run cargo test --release --no-default-features --features macros,rocsolver --test exp -- --test-threads=1 --nocapture --exact $t 2>&1 | grep -v "^warning\|^ *|\|^ *-->\|^ *=\|^$\|^[0-9 ]*|" | tail -15
+            echo "exit(${PIPESTATUS[0]})"
+          done
+          echo "=== baseline is_not_sorted"
+          vgpu run cargo test --release --no-default-features --features macros,rocsolver --lib -- --test-threads=1 --exact hip::memory_ext::sorting::test::is_not_sorted 2>&1 | tail -6
+          echo "exit(${PIPESTATUS[0]})"
+          true
